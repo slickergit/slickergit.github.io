@@ -133,65 +133,95 @@ const GraffitiSlicker = ({ onUnlock, onEnter }) => {
     }));
   };
 
-  // Spray at a specific point - more like user's spray style
-  const sprayAt = useCallback((context, x, y, radius, density, opacity = 1) => {
-    for (let i = 0; i < density; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      // More concentrated center with occasional far spray
-      const randomDist =
-        Math.random() < 0.85 ? Math.random() * Math.random() : Math.random();
-      const distance = randomDist * radius;
+  // Letter-based spray - sprays letters from "SLICKER" instead of dots
+  const sprayLettersAt = useCallback(
+    (context, x, y, radius, density, opacity = 1) => {
+      const letters = "SLICKER";
 
-      const px = x + Math.cos(angle) * distance;
-      const py = y + Math.sin(angle) * distance;
+      for (let i = 0; i < density; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        // More concentrated center with occasional far spray
+        const randomDist =
+          Math.random() < 0.85 ? Math.random() * Math.random() : Math.random();
+        const distance = randomDist * radius;
 
-      const distanceRatio = distance / radius;
-      const particleOpacity = (0.92 - distanceRatio * 0.45) * opacity;
+        const px = x + Math.cos(angle) * distance;
+        const py = y + Math.sin(angle) * distance;
 
-      context.fillStyle = `rgba(255, 255, 255, ${particleOpacity})`;
-      context.beginPath();
-      context.arc(px, py, 0.8 + Math.random() * 1.2, 0, Math.PI * 2);
-      context.fill();
-    }
-  }, []);
+        const distanceRatio = distance / radius;
+        const letterOpacity = (0.92 - distanceRatio * 0.45) * opacity;
 
-  // Draw drip effect with animation - called during drawing
-  const drawDripAnimated = useCallback(
-    (context, x, y) => {
-      const dripLength = 20 + Math.random() * 45;
-      const steps = Math.floor(dripLength / 2.5);
-      let currentY = y;
-      const wobbleAmount = (Math.random() - 0.5) * 3;
-      let currentX = x;
+        // Pick a random letter from SLICKER
+        const letter = letters[Math.floor(Math.random() * letters.length)];
 
-      const animateDrip = (step) => {
-        if (step >= steps) return;
+        // Font size varies based on distance from center - closer = bigger
+        const fontSize = (4 + Math.random() * 8) * (1 - distanceRatio * 0.5);
+        const rotation = (Math.random() - 0.5) * 1.2;
 
-        const progress = step / steps;
-        const radius = 4 * (1 - progress * 0.7);
-        const density = Math.floor(8 * (1 - progress * 0.5));
-        const opacity = 0.9 - progress * 0.35;
-
-        // Wobble and drift
-        currentX +=
-          Math.sin(step * 0.4) * wobbleAmount * 0.3 +
-          (Math.random() - 0.5) * 1.5;
-        const dropSpeed = 2.5 + progress * 2;
-        currentY += dropSpeed;
-
-        sprayAt(context, currentX, currentY, radius, density, opacity);
-
-        // Variable timing - accelerates as it falls
-        const delay = Math.max(8, 18 - progress * 12) + Math.random() * 5;
-        setTimeout(() => animateDrip(step + 1), delay);
-      };
-
-      animateDrip(0);
+        context.save();
+        context.translate(px, py);
+        context.rotate(rotation);
+        context.font = `bold ${fontSize}px Arial, sans-serif`;
+        context.fillStyle = `rgba(255, 255, 255, ${letterOpacity})`;
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText(letter, 0, 0);
+        context.restore();
+      }
     },
-    [sprayAt]
+    []
   );
 
-  // Auto-draw the graffiti text with spray animation
+  // Draw drip effect with letters - called during drawing
+  const drawDripAnimated = useCallback((context, x, y) => {
+    const letters = "SLICKER";
+    const dripLength = 20 + Math.random() * 45;
+    const steps = Math.floor(dripLength / 2.5);
+    let currentY = y;
+    const wobbleAmount = (Math.random() - 0.5) * 3;
+    let currentX = x;
+
+    const animateDrip = (step) => {
+      if (step >= steps) return;
+
+      const progress = step / steps;
+      const density = Math.floor(3 * (1 - progress * 0.5));
+      const opacity = 0.9 - progress * 0.35;
+
+      // Wobble and drift
+      currentX +=
+        Math.sin(step * 0.4) * wobbleAmount * 0.3 + (Math.random() - 0.5) * 1.5;
+      const dropSpeed = 2.5 + progress * 2;
+      currentY += dropSpeed;
+
+      // Draw letters for drip
+      for (let i = 0; i < density; i++) {
+        const letter = letters[Math.floor(Math.random() * letters.length)];
+        const fontSize = 3 + Math.random() * 4 * (1 - progress * 0.5);
+        const offsetX = (Math.random() - 0.5) * 6;
+        const offsetY = (Math.random() - 0.5) * 4;
+        const rotation = (Math.random() - 0.5) * 0.8;
+
+        context.save();
+        context.translate(currentX + offsetX, currentY + offsetY);
+        context.rotate(rotation);
+        context.font = `bold ${fontSize}px Arial, sans-serif`;
+        context.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText(letter, 0, 0);
+        context.restore();
+      }
+
+      // Variable timing - accelerates as it falls
+      const delay = Math.max(8, 18 - progress * 12) + Math.random() * 5;
+      setTimeout(() => animateDrip(step + 1), delay);
+    };
+
+    animateDrip(0);
+  }, []);
+
+  // Auto-draw the graffiti text with letter spray animation
   const autoDrawGraffiti = useCallback(
     async (context, canvas) => {
       const scale = Math.min(canvas.width / 750, canvas.height / 280) * 0.75;
@@ -204,7 +234,7 @@ const GraffitiSlicker = ({ onUnlock, onEnter }) => {
       let accumulatedSpray = 0;
       let lastDripTime = 0;
 
-      // Draw each letter with spray effect
+      // Draw each letter with letter spray effect
       for (let l = 0; l < letterPaths.length; l++) {
         const { path } = letterPaths[l];
 
@@ -261,19 +291,18 @@ const GraffitiSlicker = ({ onUnlock, onEnter }) => {
                 letterPressure * (0.85 + Math.sin(t * Math.PI) * 0.25);
               const radius =
                 18 * scale * strokePressure * (0.9 + Math.random() * 0.2);
+              // Higher density for letters to create solid coverage
               const density = Math.floor(
-                40 * strokePressure * (0.85 + Math.random() * 0.3)
+                25 * strokePressure * (0.85 + Math.random() * 0.3)
               );
 
-              sprayAt(context, x, y, radius, density);
+              // Use letter-based spray instead of dots
+              sprayLettersAt(context, x, y, radius, density);
 
               // Track spray for drips
               accumulatedSpray += density * 0.15;
 
-              // Natural drip conditions:
-              // - More likely when going down or at bottom of strokes
-              // - More likely with more accumulated spray
-              // - Minimum time between drips
+              // Natural drip conditions
               const now = Date.now();
               const timeSinceDrip = now - lastDripTime;
               const dripChance = isGoingDown
@@ -310,7 +339,6 @@ const GraffitiSlicker = ({ onUnlock, onEnter }) => {
         // Chance for drip at end of letter if lots of paint accumulated
         if (accumulatedSpray > 25 && Math.random() > 0.5) {
           const validPoints = path.filter((p) => p !== null);
-          // Prefer bottom points for end-of-letter drips
           const bottomPoints = validPoints.filter(
             (p) => p.y > startY + 70 * scale
           );
@@ -334,7 +362,7 @@ const GraffitiSlicker = ({ onUnlock, onEnter }) => {
 
       setAutoDrawComplete(true);
     },
-    [sprayAt, drawDripAnimated]
+    [sprayLettersAt, drawDripAnimated]
   );
 
   // Wipe animation
@@ -382,14 +410,13 @@ const GraffitiSlicker = ({ onUnlock, onEnter }) => {
   // Handle corner click to enable drawing
   const handleCornerClick = useCallback(
     async (e) => {
-      e.stopPropagation(); // Prevent event from bubbling up
+      e.stopPropagation();
       if (isWiping || !ctx || !canvasRef.current) return;
 
       await wipeCanvas(ctx, canvasRef.current);
       setShowCursor(true);
       setUserDrawingEnabled(true);
 
-      // Notify parent that user has unlocked drawing (disables click-anywhere)
       if (onUnlock) {
         onUnlock();
       }
@@ -460,7 +487,6 @@ const GraffitiSlicker = ({ onUnlock, onEnter }) => {
 
     const currentRadius =
       config.minRadius + (config.maxRadius - config.minRadius) * easedProgress;
-    // Much lower density for letters
     const currentDensity = Math.floor(2 + 6 * easedProgress);
 
     for (let i = 0; i < currentDensity; i++) {
@@ -474,10 +500,7 @@ const GraffitiSlicker = ({ onUnlock, onEnter }) => {
       const distanceRatio = distance / currentRadius;
       const opacity = 0.85 - distanceRatio * 0.35;
 
-      // Pick a random letter from SLICKER
       const letter = letters[Math.floor(Math.random() * letters.length)];
-
-      // Smaller font size
       const fontSize = 5 + Math.random() * 7;
       const rotation = (Math.random() - 0.5) * 0.8;
 
@@ -538,7 +561,7 @@ const GraffitiSlicker = ({ onUnlock, onEnter }) => {
         position: "relative",
       }}
     >
-      {/* Custom spray can cursor - only visible after user enables drawing */}
+      {/* Custom spray can cursor */}
       {showCursor && (
         <div
           style={{
@@ -565,7 +588,7 @@ const GraffitiSlicker = ({ onUnlock, onEnter }) => {
         </div>
       )}
 
-      {/* Corner trigger - spray can to enable drawing, or arrow to enter */}
+      {/* Corner trigger - spray can to enable drawing */}
       {autoDrawComplete && !userDrawingEnabled && (
         <div
           onMouseEnter={() => setIsHoveringCorner(true)}
@@ -589,7 +612,6 @@ const GraffitiSlicker = ({ onUnlock, onEnter }) => {
             zIndex: 1000,
           }}
         >
-          {/* Spray can icon when hovering */}
           <img
             src="/assets/spray-can.png"
             alt="Start drawing"
@@ -604,7 +626,7 @@ const GraffitiSlicker = ({ onUnlock, onEnter }) => {
         </div>
       )}
 
-      {/* Arrow button to enter site - shown when drawing is enabled */}
+      {/* Arrow button to enter site */}
       {userDrawingEnabled && (
         <div
           onMouseEnter={() => setIsHoveringCorner(true)}
@@ -628,7 +650,6 @@ const GraffitiSlicker = ({ onUnlock, onEnter }) => {
             zIndex: 1000,
           }}
         >
-          {/* Arrow icon */}
           <svg
             viewBox="0 0 24 24"
             fill="none"

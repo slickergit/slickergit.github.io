@@ -101,7 +101,7 @@ const App = () => {
             transitionDelay: introComplete ? "0.2s" : "0s",
           }}
         >
-          <Header />
+          <Header introComplete={introComplete} />
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/food" element={<Food />} />

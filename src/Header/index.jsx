@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import "./styles.css";
 
-const Header = () => {
+const Header = ({ introComplete = false }) => {
   const images = useMemo(
     () => [
       "https://storage.googleapis.com/slicker/demo/SLICKER_FOOD_01.jpg",
@@ -21,6 +21,7 @@ const Header = () => {
   const interval = 200;
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [animationStarted, setAnimationStarted] = useState(false);
   const isAtEnd = currentImageIndex >= images.length - 1;
 
   // Preload images
@@ -31,20 +32,32 @@ const Header = () => {
     });
   }, [images]);
 
-  // Cycle through images once (no loop)
+  // Start animation only after intro is complete
   useEffect(() => {
-    if (images.length === 0 || isHovered || isAtEnd) return;
+    if (introComplete && !animationStarted) {
+      setAnimationStarted(true);
+      setCurrentImageIndex(0); // Reset to first image when starting
+    }
+  }, [introComplete, animationStarted]);
+
+  // Cycle through images once (no loop) - only after animation has started
+  useEffect(() => {
+    if (!animationStarted || images.length === 0 || isHovered || isAtEnd)
+      return;
+
     const timer = setInterval(() => {
       setCurrentImageIndex((prev) => {
         const next = prev + 1;
-        // Stop at the last image
         return next >= images.length ? images.length - 1 : next;
       });
     }, interval);
     return () => clearInterval(timer);
-  }, [images.length, interval, isHovered, isAtEnd]);
+  }, [animationStarted, images.length, interval, isHovered, isAtEnd]);
 
   const currentUrl = images[currentImageIndex];
+
+  // Before intro completes, show white text
+  const showWhiteText = !animationStarted || isAtEnd;
 
   return (
     <div className="header-container">
@@ -61,8 +74,7 @@ const Header = () => {
           to="/"
           className="headerText"
           style={{
-            // If at end, show white text; otherwise show image-clipped text
-            ...(isAtEnd
+            ...(showWhiteText
               ? {
                   color: "white",
                   WebkitTextFillColor: "white",
@@ -77,7 +89,6 @@ const Header = () => {
                   color: "transparent",
                   WebkitTextFillColor: "transparent",
                 }),
-
             display: "inline-block",
             lineHeight: 1,
             fontSize: "4rem",
